@@ -1,0 +1,92 @@
+---
+title: 'Linear Models: Classification'
+author: "Fredrick Horn"
+---
+---
+Data from: [https://www.kaggle.com/datasets/gauravtopre/credit-card-defaulter-prediction]
+
+Linear classification uses a linear model to find a decision boundry between classes. The model will take a set of inputs and try to find a line that would split up the data into classes as best it can. Linear classification is great because it is simple and easy to undersand and fast with larger data sets. But linear models simplicity is also one of its down falls. It will alawys assume a linear relationship in the input data, even if its not there.  
+
+### About Logistic Regression and Naive Bayes
+I will be using the a logistic regression model and a naive bayes model to try to predict using my choosen data set. The logistic regression is great for this application as it was made to classify a binary response using its set of predicotrs. It is simple and fast to execute as well as a dsicrimitive algorithm, meaning that it directly predict a classification for the new data using its predictors. Its also robust to noise in the data. But it is still only a linear model. It will try to fit the data to the linear relationship its looking for, even if its not there. A problem that I ran into with a data set I tried to use previously, is that the more predictors it has, the longer it takes to do the computational work. I decided to switch data sets previously as the computation time was taking too long.
+
+The naive bayes is a classification model based on Bayes theorem. Naive bayes tends to perform well on smaller data sets than the logistic regression does. While unneeded for this application, it can also be applied to multiclass classification. But naive bayes has a few problems. The first and largest being its assumption that all the predictors are independent of each other, which is not always the case. Naive bayes as tends to have a higher bias than the logistic regression.
+
+### Data Exploration
+The data set I choose is from Kaggle and it contains data about credit card useage and defaulters in Taiwan in 2005. The goal is to use the data in this set to predict if a given person defaulted on their payments or not. After reading in the csv, I remove an unneeded ID row, as well as four sets of three related columns of payment information in defferent months. I chose to only use the first 2 of 6 months of data for simplicity and to improve the models. The last bit of cleaning is to remove some rows that had invalid values and insignificantly small subsets and then convert some columns to factors. 
+```{r}
+set.seed(1)
+credit <- read.csv("creditcard.csv", header = TRUE) # read in csv
+
+# data cleaning
+credit <- credit[, c(-1, -9, -10, -11, -12, -15, -16, -17, -18, -21, -22, -23, -24)] # remove unneeded columns
+credit <- subset(credit, credit$education != "0") # remove rows with invalid values
+credit <- subset(credit, credit$education != "Others") # remove rows with this education type as its insignificant
+credit <- subset(credit, credit$education != "Unknown") # remove rows with this education type as its insignificant
+credit <- subset(credit, credit$marriage != "0") # remove rows with invalid values
+credit <- subset(credit, credit$marriage != "Other") # remove rows with this marrage type as its insignificant
+
+credit$defaulted <- factor(credit$defaulted)
+credit$sex <- factor(credit$sex)
+credit$education <- factor(credit$education)
+credit$marriage <- factor(credit$marriage)
+```
+Then, I split the data into 80% training and 20% testing data and output the structure and summary of the training data.
+```{r}
+i <- sample(1:nrow(credit), 0.8 * nrow(credit), replace = FALSE) # split data
+train <- credit[i, ] # 80% train
+test <- credit[-i, ] # 20% test
+str(train) # structure of training data
+head(train) # first few lines
+tail(train) # last few lines
+summary(train) # summary of data columns
+```
+
+### Graphs
+This first graph shows that education level does have an effect on if someone defaults on their payment. The amount of poeple who defaulted that went to grad school is less than the amount of people that went to university is less than the amount of people that only went to high schoool.
+```{r}
+plot(train$defaulted ~ train$education, xlab = "Education", ylab = "Defaulted", main = "Education vs Defaulted")
+```
+These next two graphs are showing that in both months there are less people who paid their bill in full and defaulted than those that didnt pay their bill in full and defaulted. 
+```{r}
+par(mfrow = c(1, 2)) # output graphs in 2x1
+plot(factor(ifelse(train$billPaidAug >= train$billTotalAug, "Y", "N")), train$defaulted, xlab = "Paid bill in full", ylab = "Defaulted", main = "August Paid in Full vs Defaulted")
+plot(factor(ifelse(train$billPaidSep >= train$billTotalSep, "Y", "N")), train$defaulted, xlab = "Paid bill in full", ylab = "Defaulted", main = "September Paid in Full vs Defaulted")
+```
+
+### Logistic Regression Model
+Now, I create a binomial logistic regression model using the training data where I am training it to predict if a given person defaulted on their payment. As shown in the summary, the range of the min and max of the deviance residuals is small which is good for thid model. R seems very confident that the best predictor is the paymentDelaySep and to a lessser degree paymentDelayAug based on the reported z and p values. But overall, most of the predictors are significant. Interestingly, the dummy variables for the high school and university predictors are not reported as significant by R. Finally, the residual deviance is lower than the null deviance which does show that the model is at least improved over just the intercept with no predictors.
+```{r}
+logModel <- glm(defaulted ~ ., data = train, family = "binomial") # create logistic regression model
+summary(logModel)
+```
+
+### Naive Bayes Model
+Next, I create a naive bayes model using the e1071 library. The first notable data in the model's output is the A-priori probabilties. These are what the model thinks the overall probabilties that a given person will have defaulted or not. Next is the conditional probabilities, where each group is what the model thinks the probability that a person would default given each column of data.  
+```{r}
+library(e1071) # import lib for naive bayes
+bayesModel <- naiveBayes(defaulted ~ ., data = train) # create naive bayes model
+bayesModel
+```
+
+### Evaluation of Models on Test Set
+In evaluating the logistic regression model, it performs pretty well. R reports an accuracy of 0.8092 which is higher than I expected. But looking closer at the confusion matrix and statistics, there are a lot of false positive. This is further shown by the fact that the specificity is quite low. The Kappa value is also on the low end of 0.2815 which is not great but good enough. Looking at the ROC graph, the model clearly a little lackcing as the slope of the line does go up significantly in the beginning, indicating a good true positive rate, but it does not ever flatten out. Ideally the true positive rate would be as close to 1 as possible and the false positive rate would be close to 0. The reported AUC is also repoted to be at least better than randomly guessing, with a 0.7293 chance to correctly distinguish between if someone did default or not.
+```{r}
+library(ROCR)
+library(caret)
+
+# logistic regession
+predLog <- ifelse(predict(logModel, newdata = test, type = "response") > 0.5, "Y", "N")
+confusionMatrix(as.factor(predLog), reference = test$defaulted)
+plot(performance(prediction(predict(logModel, newdata = test, type = "response"), test$defaulted), measure = "tpr", x.measure = "fpr"))
+print(paste("AUC:", performance(prediction(predict(logModel, newdata = test, type = "response"), test$defaulted), measure = "auc")@y.values[[1]]))
+```
+
+Now, in evaluating the naive bayes model, its clear that it does not perform as well as the logistic regression model. While the naive bayes model does not have as many false positives as the logistic regression model, it does have more overall incorrect classifications than teh logistic model. This is furth shown by its accuracy being a bit lower at about 0.7876.
+```{r}
+# naive bayes
+predBayes <- predict(bayesModel, newdata = test, type = "class")
+predBayes_raw <- predict(bayesModel, newdata = test, type = "raw")
+table(predBayes, test$defaulted)
+print(paste("Accuracy:", mean(predBayes == test$defaulted)))
+```

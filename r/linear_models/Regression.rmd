@@ -1,0 +1,101 @@
+---
+title: 'Linear Models: Regression'
+author: "Fredrick Horn"
+---
+---
+Data from: [https://www.kaggle.com/datasets/budincsevity/szeged-weather](Kaggle: Weather in Szeged 2006-2016)
+
+Linear Regression attempts to find a linear relationship between a dependent variable and one or more independent variables and then use that relationship to predict the dependent variable based on the independent variable or variables. The general form of linear regression is y = a + bx where y is the variable we are trying to predict and x is the variable used for prediction. a and b are what we are trying to find to fit the linear model to our data set. Linear regression is great because its simple and allows you to quantify a the relationship between your predictors and your predicted variable. But linear regression also will always try to find a linear relationship in the data, even if its not there, which tends to underfit the data or produce a model that will not perform well. It also can be impacted quite heavily by outliers that can skew the model.
+
+### Data Exploration
+The data set I chose is from Kaggle and contains weather data in Szeged, Hungary from 2006 to 2016. First, read in the data and select the relavent columns from the data.  This data set had a few problems, the main one being that there is supposed to be a column on what I assume should've been "Cloud Cover" but it is instad called "Loud Cover" and is only filled with 0. A few other columns also have missing data for some days and I have choosen to omit them as they were not as relavent. I will be trying to predict the apprent temperature on a given day based on the humidity, wind speed, wind bearing, and real temperature. 
+```{r}
+set.seed(1)
+weather <- read.csv("weatherHistory.csv", header = TRUE) # read in csv
+weather <- weather[, c(4, 5, 6, 7, 8)] # select relavent columns
+i <- sample(1:nrow(weather), 0.8 * nrow(weather), replace = FALSE) # split data
+train <- weather[i, ] # 80% train
+test <- weather[-i, ] # 20% test
+str(train) # structure of training data
+head(train) # first few lines
+tail(train) # last few lines
+summary(train) # summary of data columns
+```
+
+### Graphs
+The predictor used for the simple linear model is humidity. It does not have a strong linear relation with apparent tempurature, as shown in the first graph, but it was the best predictor of the relevant columns (excluding real temperature).
+The (obviously) best predictor for apprent temperature is real temperature as shown by the 2nd graph.
+```{r}
+par(mfrow = c(1, 2)) # output graphs in 2x1
+plot(train$Humidity, train$ApparentTemperature, xlab = "Humidity", ylab = "Apparent Temperature", main = "Humidity vs Apparent Temp")
+plot(train$Temperature, train$ApparentTemperature, xlab = "Temperature", ylab = "Apparent Temperature", main = "Real Temp vs Apparent Temp")
+```
+
+### Simple Linear Regression
+This first model is only using the humidity to predict that apprent temperature. This does not perform very well as the data is not linearly correlated and does not fit the model very well as shown by the adjuested R-squared value being about 0.3633. The residuals of this model are also not great and have quite a large range in the min and max and has the largest residual standard error of the models. R reports that the humidity is at least a significant predictor of apprent temperature as is p-value is very low but its overall it is not doing a great job of predicting apparent temperature by itself. 
+```{r}
+model <- lm(ApparentTemperature ~ Humidity, data = train) # create the first model
+summary(model) # output summary
+```
+
+### Plots For Simple Linear Model
+The Residuals vs Fitted plot here shows that the model did not have any non-linear trends as all the points are clustered around the main horizantal. The Normal Q-Q plot shows that the residuals are normally distributed and they do follow a straight line quite well. Its only in the top and bottom ends that they deviate from the straight line. The Scale-Location plot shows that most of the residuals are spread evenly across all the predictors, as all the points are spread along the mostly horizantal line. Finally, The Residuals vs Leverage shows that there seems to be a few case that could be outliers, but nothing is outside of cook's distance as the dashed lines denoting it are not even in the frame of teh graph.
+```{r}
+par(mfrow = c(2, 2)) # make graphs nicer by drawing them in a 2x2 grid
+plot(model) # draw 4 graphs for the model
+```
+
+### Multiple Linear Regression
+Thie model now uses humidity, wind speed, and wind bearing in predicting apparent temperature. It performs a little better than the simple linear model, but still only has a slight increase in the adjusted R-squared value of 0.4041. Interestingly the residuals for this model have a wider spread in the min and max but have a slightly lower residual standard error when compared to the first model. Otherwise not much changes. R reports that all 3 predictors are at least significant but looking at the estimates, its clear that wind bearing and to a lesser degree wind speed are not affecting the strength of the model as significatly as the humidity is. 
+```{r}
+model2 <- lm(ApparentTemperature ~ Humidity + WindSpeed + WindBearing, data = train) # create the second model
+summary(model2) # output summary
+```
+
+### Plots For Multiple Linear Model
+In this model, we see very similar graphs to the simple linear regression. This is very likely due to the fact that the added wind speed and wind bearing, while significant statistically, in reality are not affecting the model as much as humidity does.
+```{r}
+par(mfrow = c(2, 2)) # make graphs nicer by drawing them in a 2x2 grid
+plot(model2) # draw 4 graphs for the model
+```
+
+### Significantly Better Multiple Linear Regression
+This final model is the best performing by a significant margin. The adjusted R-squared value is 0.9898 which is most definatly due to the addition of real temperature as a predictor. Obviously real temperature is the most significant predictor of apprent temperature. It shows in the residuals have a muich smaller range in the min and max as well as having a significatly smaller residual standard error. Clearly, compared to temperature and humidity, wind speed and wind bearing are not great predictors of the apprent temperature.
+```{r}
+model3 <- lm(ApparentTemperature ~ Humidity + WindSpeed + WindBearing + Temperature, data = train) # create the third model
+summary(model3) # output summary
+```
+
+### Plots For Significantly Better Multiple Linear Model
+Now these graphs look quite different to the other 2 models. First, we can see there is a parabala in the Residuals vs Fitted plot, which implies there is a non linear relationship in this data that the linear model did not catch. The Normal Q-Q plot shows that the data is very strongly normally distributed. The Scale-Location plot again shows that parabala curve and the points are definatly not distributed evenly across it. Finally the Residuals vs Leverage plot shows some potential outliers, but we still dont see cook's distance in the frame of the graph so these are probably fine. 
+```{r}
+par(mfrow = c(2, 2)) # make graphs nicer by drawing them in a 2x2 grid
+plot(model3) # draw 4 graphs for the model
+```
+
+### Evaluate Models On Test Set
+Evaluating the models, its clear that model 3 out performs models 1 and 2 by a significant margin. This is definatly due to the temperature predictor. Model 1 and 2 both have a similar correlation and rmse that show it performs okay. But model 3 is very strongly correlated being close to 1, and has a much smaller rmse. 
+```{r}
+pred1 <- predict(model, newdata = test) # run prediction with model 1 on test set
+cor1 <- cor(pred1, test$ApparentTemperature) # calculate correlation
+mse1 <- mean((pred1 - test$ApparentTemperature)^2) # calculate mse
+rmse1 <- sqrt(mse1) # calculate rmse
+
+pred2 <- predict(model2, newdata = test) # run prediction with model 2 on test set
+cor2 <- cor(pred2, test$ApparentTemperature) # calculate correlation
+mse2 <- mean((pred2 - test$ApparentTemperature)^2) # calculate mse
+rmse2 <- sqrt(mse2) # calculate rmse
+
+pred3 <- predict(model3, newdata = test) # run prediction with model 3 on test set
+cor3 <- cor(pred3, test$ApparentTemperature) # calculate correlation
+mse3 <- mean((pred3 - test$ApparentTemperature)^2) # calculate mse
+rmse3 <- sqrt(mse3) # calculate rmse
+
+correlation <- c(cor1, cor2, cor3)
+mse <- c(mse1, mse2, mse3)
+rmse <- c(rmse1, rmse2, rmse3)
+table <- data.frame(correlation, mse, rmse, row.names = c("Model 1", "Model 2", "Model 3"))
+table # display formated output
+
+anova(model, model2, model3)
+```
