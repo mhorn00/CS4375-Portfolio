@@ -17,3 +17,8 @@ This project was done to learn about linear models and data cleaning.
 [Regression Code Here](r/linear_models/Regression.rmd) and [Regression PDF Here](r/linear_models/Linear_Models_Regression.pdf) ([HTML Version Here](r/linear_models/Regression.html))
 
 [Classification Code Here](r/linear_models/Classification.rmd) and [Classification PDF Here](r/linear_models/Linear_Models_Classification.pdf) ([HTML Version Here](r/linear_models/Regression.html))
+
+## C++ Project 2: Logistic Regression and Naive Bayes
+This project was to use C++ to implement the Logistic Regression and Naive Bayes algorithms from scratch.
+
+[Logistic Regression Code Here](cpp/project2/Logistic%20Regression.cpp) and [Naive Bayes Code Here](cpp/project2/Naive%20Bayes.cpp) and [Doc Here](cpp/project2/Logistic%20Regresssion%20and%20Naive%20Bayes.pdf) 
