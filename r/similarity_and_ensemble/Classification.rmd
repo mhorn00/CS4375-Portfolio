@@ -1,0 +1,162 @@
+---
+title: 'Similarity and Ensamble: Classification'
+author: "Fredrick Horn"
+---
+---
+Data from: [https://www.kaggle.com/datasets/mitishaagarwal/patient](Kaggle: Patient Survival Prediction)
+
+# Inital Data Read
+
+First I read in the data from the csv. I then select the most relavent columns, keeping in mind that there are 85 total and choosing too many column will drastically slow down these algorithms. Next I remove all N/A's frim the data set. There are enough cases that are complete that it shoudl not matter to remove all the incomplete ones.
+```{r}
+set.seed(0)
+patients <- read.csv("dataset.csv", header = TRUE, stringsAsFactors = TRUE) # read in csv
+patients <- patients[, c(4, 6, 27, 29, 34, 37, 41, 42, 43, 49, 54, 61, 69, 70, 72, 73, 75, 76, 78, 81, 85)] # select relavent columns
+patients <- patients[complete.cases(patients), ] # remove all rows with NA in any column
+patients <- patients[patients$apache_4a_hospital_death_prob >= 0,] #remove invalid values
+patients <- patients[patients$apache_4a_icu_death_prob >= 0,] #remove invalid values
+patients$hospital_death <- as.factor(patients$hospital_death) # labels to compare agains.
+levels(patients$hospital_death) <- c("N", "Y")
+str(patients)
+summary(patients)
+```
+
+# Data Exploration
+
+This data set includes a calculated probabilty of death based on many of the other columns and it performs very well as a predictor.
+```{r}
+plot(patients$hospital_death ~ patients$apache_4a_hospital_death_prob)
+plot(patients$hospital_death ~ patients$apache_4a_icu_death_prob)
+```
+Not every signficant column is shown in these graphs but generally the min recorded value columns show a signficant increase in deaths in their minimums and the max recorded values show an increase in deaths in their max recorded values. 
+```{r}
+plot(patients$hospital_death ~ patients$d1_temp_min)
+plot(patients$hospital_death ~ patients$d1_mbp_min)
+```
+
+
+# Logistic Regression
+
+For organization, I will move the data into a new var for the logistic regression to use and will load the libraries needed for the logistic regresion.
+```{r}
+logData <- patients
+
+library(ROCR)
+library(caret)
+```
+
+Next I split the data on into 80% train and 20% test
+```{r}
+i <- sample(1:nrow(logData), 0.8 * nrow(logData), replace = FALSE) # split data
+train <- logData[i, ] # 80% train
+test <- logData[-i, ] # 20% test
+```
+
+Create the logistic regression model and output its summary.
+```{r}
+logModel <- glm(hospital_death ~ ., data = train, family = "binomial")
+summary(logModel)
+```
+
+To evaluate the model, I create a factor of the prediction on the test data and output the confusion matrix from the caret library. I also plot the ROC curve and area under that curve.
+```{r}
+predLog <- ifelse(predict(logModel, newdata = test, type = "response") > 0.5, "Y", "N")
+cMat <- confusionMatrix(as.factor(predLog), reference = test$hospital_death)
+cMat
+print(paste("AUC:", performance(prediction(predict(logModel, newdata = test, type = "response"), test$hospital_death), measure = "auc")@y.values[[1]]))
+plot(performance(prediction(predict(logModel, newdata = test, type = "response"), test$hospital_death), measure = "tpr", x.measure = "fpr"))
+```
+
+# K Nearest Neighbors
+
+For kNN, I move the data into a new var and then convert all the int types to numeric types as kNN does not play nicely with the int type.
+```{r}
+knnData <- patients
+
+#make everything numeric
+knnData$age <- as.numeric(knnData$age)
+knnData$elective_surgery <- as.numeric(knnData$elective_surgery)
+knnData$ventilated_apache <- as.numeric(knnData$ventilated_apache)
+knnData$d1_heartrate_max <- as.numeric(knnData$d1_heartrate_max)
+knnData$d1_mbp_min <- as.numeric(knnData$d1_mbp_min)
+knnData$d1_resprate_min <- as.numeric(knnData$d1_resprate_min)
+knnData$d1_spo2_max <- as.numeric(knnData$d1_spo2_max)
+knnData$d1_spo2_min <- as.numeric(knnData$d1_spo2_min)
+knnData$h1_heartrate_max <- as.numeric(knnData$h1_heartrate_max)
+knnData$h1_resprate_min <- as.numeric(knnData$h1_resprate_min)
+knnData$d1_glucose_min <- as.numeric(knnData$d1_glucose_min)
+knnData$cirrhosis <- as.numeric(knnData$cirrhosis)
+knnData$diabetes_mellitus <- as.numeric(knnData$diabetes_mellitus)
+knnData$immunosuppression <- as.numeric(knnData$immunosuppression)
+knnData$solid_tumor_with_metastasis <- as.numeric(knnData$solid_tumor_with_metastasis)
+
+library(class)
+```
+
+The data is split into 80% test and 20% train again. This time though I remove the data lables and move it into its own var for uses in the evaluation. I also make sure to scale the data as it does improve the performace.
+```{r}
+i <- sample(1:nrow(knnData), 0.8 * nrow(knnData), replace = FALSE) # split data
+train <- knnData[i, -21] # 80% train
+test <- knnData[-i, -21] # 20% test
+trainLabels <- knnData[i, 21]
+testLabels <- knnData[-i, 21]
+#scale data
+means <- sapply(train, mean)
+stdvs <- sapply(train, sd)
+train <- scale(train, center = means, scale = stdvs)
+test <- scale(test, center = means, scale = stdvs)
+```
+
+Create the kNN model.
+```{r}
+knnModel <- knn(train, test, cl = trainLabels, k = 2)
+```
+
+First I calclate accuracy
+```{r}
+knnAcc <- length(which(knnModel == testLabels))/length(knnModel)
+predKnn <- as.factor(knnModel != testLabels)
+levels(predKnn) <- c("N","Y")
+table(predKnn, knnModel)
+print(paste("kNN Accuracy:",knnAcc))
+```
+
+# Decision Tree
+
+Make seperate var for decision tree data and load the tree library.
+```{r}
+dtData <- patients
+
+library(tree)
+```
+
+Split into 80% train and 20% test. 
+```{r}
+i <- sample(1:nrow(dtData), 0.8 * nrow(dtData), replace = FALSE) # split data
+train <- dtData[i,] # 80% train
+test <- dtData[-i,] # 20% test
+```
+
+Create the decision tree model and output the tree.
+```{r}
+dtModel <- tree(hospital_death ~ ., data=train)
+dtModel
+```
+
+Then run the prediction using the model and the test data and output the accuracy and confusion matrix.
+```{r}
+dtPred <- predict(dtModel, newdata = test, type="class")
+table(dtPred, test$hospital_death)
+dtAcc <- mean(dtPred == test$hospital_death)
+print(paste("Decision Tree Accuracy:",dtAcc))
+```
+
+# Analysis
+These are the accuracy's of the 3 models
+```{r}
+print(paste("Log Reg Accuracy:", cMat$overall["Accuracy"]))
+print(paste("kNN Accuracy:", knnAcc))
+print(paste("DT Accuracy:", dtAcc))
+```
+
+The logistic regresion and decision tree models perform very similarity to each other. This is interesting as the decision tree seems to only care about a single predictor while the logistic regresion is using all the predictors. Logistic regression tends to perform slightly better, though just by changing the seed set at the beginning the gap in accuracy between them can get very small. kNN is the only odd one out here. Before scaling the data it performed the worst with around 87% accuracy. But even after scaling it only gained about 2% accuracy. 

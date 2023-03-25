@@ -22,3 +22,8 @@ This project was done to learn about linear models and data cleaning.
 This project was to use C++ to implement the Logistic Regression and Naive Bayes algorithms from scratch.
 
 [Logistic Regression Code Here](cpp/project2/Logistic%20Regression.cpp) and [Naive Bayes Code Here](cpp/project2/Naive%20Bayes.cpp) and [Doc Here](cpp/project2/Logistic%20Regresssion%20and%20Naive%20Bayes.pdf) 
+
+## Similarity and Ensemble
+This was a group project over similarity and ensable methods. I worked on the classification section.
+
+[Classification Code Here](r/similarity_and_ensemble/Classification.rmd) and [Classification PDF Here](r/similarity_and_ensemble/Classification.pdf) ([HTML Version Here](r/similarity_and_ensemble/Classification.html))
