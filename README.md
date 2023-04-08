@@ -27,3 +27,8 @@ This project was to use C++ to implement the Logistic Regression and Naive Bayes
 This was a group project over similarity and ensable methods. I worked on the classification section.
 
 [Classification Code Here](r/similarity_and_ensemble/Classification.rmd) and [Classification PDF Here](r/similarity_and_ensemble/Classification.pdf) ([HTML Version Here](r/similarity_and_ensemble/Classification.html))
+
+## Python skLearn Epxploration
+This project was to learn how to use python and libraries like skLearn, pandas, and numpy to do machine learning.
+
+[Code Here](py/skLearn/skLearn.ipynb) and [PDF Here](py/skLearn/skLearn.pdf) ([HTML Version Here](py/skLearn/skLearn.html))
