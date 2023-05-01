@@ -1,5 +1,5 @@
 # CS4375-Portfolio
-Portfolio of projects and assignments done for CS4375 Intro to Machine Learning
+Portfolio of projects and assignments done for CS4375 Intro to Machine Learning.
 
 ## Overview of Machine Learning
 This is an Overview of Machine Learning as written for the first assinement for this class. 
@@ -37,3 +37,6 @@ This project was to learn how to use python and libraries like skLearn, pandas, 
 This project was to learn how to use TensorFlow and Keras to do image classification.
 
 [Code Here](py/ImageClassification/imageClassification.ipynb) and [PDF Here](py/ImageClassification/imageClassification.pdf) ([HTML Version Here](py/ImageClassification/imageClassification.html))
+
+# End of Semester Summary
+My final thoughts on this course can be found [Here](Summary.md)
